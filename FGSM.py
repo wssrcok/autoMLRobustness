@@ -120,8 +120,8 @@ def FGSM(points=10):
     
 
 
-def Deepfool(points=3, steps=0.2):
-    from art.attacks.evasion import DeepFool
+def Deepfool(points=2, steps=0.05):
+    from art.attacks.evasion import NewtonFool
     from art.estimators.classification import TensorFlowV2Classifier
 
     loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
@@ -131,23 +131,23 @@ def Deepfool(points=3, steps=0.2):
     
     # Craft adversarial samples with FGSM
     epsilons = [0.2 * i + 0.1 for i in range(points)]  # Maximum perturbation
-    preds = np.argmax(classifier.predict(x_test), axis=1)
-    acc = np.sum(preds == np.argmax(y_test, axis=1)) / y_test.shape[0]
+    preds = np.argmax(classifier.predict(x_test[:1000]), axis=1)
+    acc = np.sum(preds == np.argmax(y_test[:1000], axis=1)) / y_test[:1000].shape[0]
     print("\nTest accuracy on normal sample: %.2f%% eps: %.2f" % (acc * 100, 0))
     accuracies = [acc]
     examples = []
     for epsilon in epsilons[1:]:
-        adv_crafter = DeepFool(classifier, epsilon=epsilon)
-        x_test_adv = adv_crafter.generate(x=x_test)
+        adv_crafter = NewtonFool(classifier)
+        x_test_adv = adv_crafter.generate(x=x_test[:1000], y=y_test[:1000])
 
         # Evaluate the classifier on the adversarial examples
         preds = np.argmax(classifier.predict(x_test_adv), axis=1)
-        acc = np.sum(preds == np.argmax(y_test, axis=1)) / y_test.shape[0]
+        acc = np.sum(preds == np.argmax(y_test[:1000], axis=1)) / y_test[:1000].shape[0]
         print("\nTest accuracy on adversarial sample: %.2f%% eps: %.2f" % (acc * 100, epsilon))
         accuracies.append(acc)
         example = []
         preds = np.argmax(classifier.predict(x_test_adv), axis=1)
-        labels = np.argmax(y_test, axis=1)
+        labels = np.argmax(y_test[:1000], axis=1)
         for i in range(len(preds)):
             p, l = preds[i], labels[i]
             if p != l:
